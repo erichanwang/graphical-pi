@@ -25,8 +25,12 @@ zoomX, zoomY = centerX, centerY
 follow = False
 
 def toggle_follow():
-    global follow
+    global follow, zoom
     follow = not follow
+    if follow:
+        zoom = 10
+    else:
+        zoom = 1
 
 slider = Slider(screen, 10, 10, 200, 10, min=0, max=0.1, step=0.001, initial=0.01)
 zoom_in_button = Button(screen, 10, 30, 30, 30, text="+", onClick=lambda: globals().update(zoom=min(globals()['zoom'] * 1.1, 10)))
@@ -70,7 +74,11 @@ while running:
     
     zoomed_trail = pygame.transform.scale(trail_surface, (zoomed_width, zoomed_height))
 
-    screen.blit(zoomed_trail, (width/2 - zoomX*zoom, height/2 - zoomY*zoom))
+    if follow:
+        screen.blit(zoomed_trail, (width/2 - zoomX*zoom, height/2 - zoomY*zoom))
+    else:
+        screen.blit(zoomed_trail, (width/2 - centerX*zoom, height/2 - centerY*zoom))
+
 
     pygame.draw.line(screen, (255, 255, 255), (width/2 + (centerX-zoomX)*zoom, height/2 + (centerY-zoomY)*zoom), (width/2 + (x1-zoomX)*zoom, height/2 + (y1-zoomY)*zoom), 2)
     pygame.draw.line(screen, (255, 255, 255), (width/2 + (x1-zoomX)*zoom, height/2 + (y1-zoomY)*zoom), (width/2 + (x2-zoomX)*zoom, height/2 + (y2-zoomY)*zoom), 2)

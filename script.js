@@ -56,6 +56,11 @@ zoomOutButton.addEventListener("click", () => {
 
 toggleZoomButton.addEventListener("click", () => {
     follow = !follow;
+    if (follow) {
+        zoom = 10;
+    } else {
+        zoom = 1;
+    }
 });
 
 
@@ -73,9 +78,9 @@ function draw() {
         ctx.scale(zoom, zoom);
         ctx.translate(-zoomX, -zoomY);
     } else {
-        ctx.translate(centerX, centerY);
+        ctx.translate(width / 2, height / 2);
         ctx.scale(zoom, zoom);
-        ctx.translate(-centerX, -centerY);
+        ctx.translate(-width / 2, -height / 2);
     }
 
 
@@ -88,9 +93,6 @@ function draw() {
     if (follow) {
         zoomX = x2;
         zoomY = y2;
-    } else {
-        zoomX = centerX;
-        zoomY = centerY;
     }
 
 
