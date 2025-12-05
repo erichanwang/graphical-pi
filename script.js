@@ -41,17 +41,16 @@ trailCtx.fillStyle = "rgba(0, 0, 0, 1)";
 trailCtx.fillRect(0, 0, width, height);
 
 speedSlider.addEventListener("input", (event) => {
-    speed = parseFloat(event.target.value);
+    let value = parseFloat(event.target.value);
+    speed = Math.pow(value, 3) / 100;
 });
 
 zoomInButton.addEventListener("click", () => {
     zoom *= 1.1;
-    zoom = Math.min(Math.max(0.1, zoom), 10);
 });
 
 zoomOutButton.addEventListener("click", () => {
     zoom *= 0.9;
-    zoom = Math.min(Math.max(0.1, zoom), 10);
 });
 
 toggleZoomButton.addEventListener("click", () => {
@@ -66,35 +65,31 @@ toggleZoomButton.addEventListener("click", () => {
 
 canvas.addEventListener("wheel", (event) => {
     event.preventDefault();
-    zoom += event.deltaY * -0.01;
-    zoom = Math.min(Math.max(0.1, zoom), 10);
+    if (follow) {
+        zoom += event.deltaY * -0.01;
+        zoom = Math.min(Math.max(0.1, zoom), 20);
+    }
 });
 
 function draw() {
-    ctx.save();
-    ctx.clearRect(0, 0, width, height);
-    if (follow) {
-        ctx.translate(width / 2, height / 2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-zoomX, -zoomY);
-    } else {
-        ctx.translate(width / 2, height / 2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-width / 2, -height / 2);
-    }
-
-
     let x1 = centerX + radius * Math.cos(angle1);
     let y1 = centerY + radius * Math.sin(angle1);
 
     let x2 = x1 + radius * Math.cos(angle2);
     let y2 = y1 + radius * Math.sin(angle2);
 
+    ctx.save();
+    ctx.clearRect(0, 0, width, height);
+    
     if (follow) {
-        zoomX = x2;
-        zoomY = y2;
+        ctx.translate(width / 2, height / 2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-x2, -y2);
+    } else {
+        ctx.translate(width / 2, height / 2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-width / 2, -height / 2);
     }
-
 
     ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
