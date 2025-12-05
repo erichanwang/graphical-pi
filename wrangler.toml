@@ -1,0 +1,5 @@
+name = "graphical-pi"
+compatibility_date = "2025-12-05"
+
+[pages]
+main = "."

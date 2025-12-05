@@ -1,5 +1,8 @@
 import pygame
 import math
+import pygame_widgets
+from pygame_widgets.slider import Slider
+from pygame_widgets.button import Button
 
 pygame.init()
 
@@ -15,12 +18,26 @@ radius = min(width, height) // 4
 
 angle1 = 0
 angle2 = 0
+lastX2, lastY2 = 0, 0
 speed = 0.01
 zoom = 1
+zoomX, zoomY = centerX, centerY
+follow = False
+
+def toggle_follow():
+    global follow
+    follow = not follow
+
+slider = Slider(screen, 10, 10, 200, 10, min=0, max=0.1, step=0.001, initial=0.01)
+zoom_in_button = Button(screen, 10, 30, 30, 30, text="+", onClick=lambda: globals().update(zoom=min(globals()['zoom'] * 1.1, 10)))
+zoom_out_button = Button(screen, 50, 30, 30, 30, text="-", onClick=lambda: globals().update(zoom=max(globals()['zoom'] * 0.9, 0.1)))
+toggle_zoom_button = Button(screen, 90, 30, 100, 30, text="Toggle Follow", onClick=toggle_follow)
+
 
 running = True
 while running:
-    for event in pygame.event.get():
+    events = pygame.event.get()
+    for event in events:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.MOUSEWHEEL:
@@ -29,28 +46,42 @@ while running:
 
     screen.fill((0, 0, 0))
 
-    zoomed_width = int(width * zoom)
-    zoomed_height = int(height * zoom)
-    zoomed_surface = pygame.Surface((zoomed_width, zoomed_height))
-    zoomed_surface.blit(trail_surface, (0, 0))
-
-
     x1 = centerX + radius * math.cos(angle1)
     y1 = centerY + radius * math.sin(angle1)
 
     x2 = x1 + radius * math.cos(angle2)
     y2 = y1 + radius * math.sin(angle2)
+    
+    if follow:
+        zoomX = x2
+        zoomY = y2
+    else:
+        zoomX = centerX
+        zoomY = centerY
 
-    pygame.draw.circle(trail_surface, (255, 255, 255), (int(x2), int(y2)), 2)
+    if lastX2 != 0 and lastY2 != 0:
+        pygame.draw.line(trail_surface, (255, 255, 255), (lastX2, lastY2), (x2, y2), 1)
+    
+    lastX2 = x2
+    lastY2 = y2
+    
+    zoomed_width = int(width * zoom)
+    zoomed_height = int(height * zoom)
+    
+    zoomed_trail = pygame.transform.scale(trail_surface, (zoomed_width, zoomed_height))
 
-    screen.blit(pygame.transform.scale(trail_surface, (zoomed_width, zoomed_height)), (-(zoomed_width - width) // 2, -(zoomed_height - height) // 2))
+    screen.blit(zoomed_trail, (width/2 - zoomX*zoom, height/2 - zoomY*zoom))
 
-    pygame.draw.line(screen, (255, 255, 255), (centerX, centerY), (x1, y1), 2)
-    pygame.draw.line(screen, (255, 255, 255), (x1, y1), (x2, y2), 2)
+    pygame.draw.line(screen, (255, 255, 255), (width/2 + (centerX-zoomX)*zoom, height/2 + (centerY-zoomY)*zoom), (width/2 + (x1-zoomX)*zoom, height/2 + (y1-zoomY)*zoom), 2)
+    pygame.draw.line(screen, (255, 255, 255), (width/2 + (x1-zoomX)*zoom, height/2 + (y1-zoomY)*zoom), (width/2 + (x2-zoomX)*zoom, height/2 + (y2-zoomY)*zoom), 2)
+
 
     angle1 += speed
     angle2 += speed * math.pi
+    
+    speed = slider.getValue()
 
+    pygame_widgets.update(events)
     pygame.display.flip()
 
 pygame.quit()
