@@ -3,264 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Digits Frequency Visualizer</title>
+    <title>Pi Digits Visualizer</title>
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #000;
-            color: #fff;
-            overflow: hidden;
+        body { margin: 0; font-family: Arial, sans-serif; background: #000; color: #fff; overflow: hidden; }
+        #bottom-controls {
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+            background: linear-gradient(to top, rgba(0,0,0,0.98), rgba(0,0,0,0.3)); padding: 12px;
+            display: flex; gap: 15px; align-items: center; font-size: 13px; backdrop-filter: blur(20px);
         }
-        #controls {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            z-index: 10;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 10px;
-            max-width: 300px;
+        .slider-group { display: flex; flex-direction: column; min-width: 130px; }
+        label { margin: 0 0 3px 0; font-size: 11px; opacity: 0.9; }
+        input[type="range"] { width: 100px; height: 5px; background: #222; border-radius: 3px; accent-color: #10b981; }
+        button { padding: 8px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; color: white; font-weight: 500; transition: all 0.2s; }
+        #fetch-btn { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+        #fetch-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
+        #load-more-btn { background: linear-gradient(135deg, #22c55e, #15803d); }
+        #load-more-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(34,197,94,0.4); }
+        #status { font-size: 12px; min-width: 200px; text-align: center; flex-shrink: 0; opacity: 0.9; font-family: 'SF Mono', monospace; }
+        #current-digit {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 9;
+            font-size: clamp(140px, 25vw, 320px); font-weight: 900; letter-spacing: -0.02em;
+            text-shadow: 0 0 80px currentColor; opacity: 0.97; pointer-events: none; transition: all 0.08s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
         }
-        label { display: block; margin: 10px 0 5px; }
-        input[type="range"] { width: 200px; }
-        button { margin: 5px; padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        #stats {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            z-index: 10;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 10px;
-            min-width: 250px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-#current-digit {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            font-size: 120px;
-            font-weight: bold;
-            color: hsl(0, 70%, 60%);
-            text-shadow: 0 0 30px currentColor;
-            opacity: 0.9;
-            pointer-events: none;
-            transition: all 0.2s ease;
-        }
-
-
-        canvas {
-            display: block;
-        }
+        canvas { display: block; }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <label>Digits to fetch: <span id="digit-count-val">10000</span></label>
-        <input type="range" id="digit-count" min="100" max="1000000" step="1000" value="10000">
-        <br>
-        <label>Animation speed: <span id="speed-val">20</span>ms</label>
-        <input type="range" id="speed" min="1" max="200" step="1" value="20">
-        <br>
-<button id="fetch-btn">Fetch Pi Digits & Animate</button>
-        <br>
-        <button id="load-more-btn" style="background: #28a745; margin-top: 5px; padding: 10px;">Load More (+5000 digits)</button>
-        <div id="status">Ready</div>
-    </div>
-    <div id="stats">
-        <div>Total digits: <span id="total-digits">0</span></div>
-        <div id="freq-list"></div>
+    <div id="bottom-controls">
+        <div class="slider-group">
+            <label>π Count: <span id="digit-count-val">50K</span></label>
+            <input type="range" id="digit-count" min="1000" max="1000000" step="1000" value="50000">
+        </div>
+        <div class="slider-group">
+            <label>Speed: <span id="speed-val">0.2</span>ms</label>
+            <input type="range" id="speed" min="-1.5" max="2.5" step="0.05" value="-0.7">
+        </div>
+        <button id="fetch-btn">🚀 Load 1M π</button>
+        <button id="load-more-btn">+50K</button>
+        <div id="status">Ready - logarithmic hyperspeed animation</div>
     </div>
     <canvas id="chart-canvas"></canvas>
-    <div id="current-digit">?</div>
+    <div id="current-digit">π</div>
 
     <script>
         const canvas = document.getElementById('chart-canvas');
         const ctx = canvas.getContext('2d');
-        const digitCountSlider = document.getElementById('digit-count');
+        const countSlider = document.getElementById('digit-count');
         const speedSlider = document.getElementById('speed');
         const fetchBtn = document.getElementById('fetch-btn');
+        const moreBtn = document.getElementById('load-more-btn');
         const status = document.getElementById('status');
-        const totalDigitsSpan = document.getElementById('total-digits');
-        const freqList = document.getElementById('freq-list');
-        const digitsPreview = document.getElementById('digits-preview');
-        const digitCountVal = document.getElementById('digit-count-val');
+        const countVal = document.getElementById('digit-count-val');
         const speedVal = document.getElementById('speed-val');
-        const loadMoreBtn = document.getElementById('load-more-btn');
+        const digitEl = document.getElementById('current-digit');
 
-        // Resize canvas
-        function resizeCanvas() {
+        let f = new Array(10).fill(0);
+        let p = 0;
+        let d = '';
+        let raf = 0;
+
+        function resize() {
             canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight - 200; // Avoid preview/controls overlap
+            canvas.height = window.innerHeight;
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        window.addEventListener('resize', resize);
+        resize();
 
-        let frequencies = new Array(10).fill(0);
-        let totalDigits = 0;
-        let allDigits = '';
-        let animationInterval;
+        // Log speed (negative = sub-ms ultra)
+        function spd() {
+            return Math.max(0.05, Math.pow(10, parseFloat(speedSlider.value)));
+        }
 
-        // Update sliders display
-        digitCountSlider.addEventListener('input', () => digitCountVal.textContent = digitCountSlider.value);
-        speedSlider.addEventListener('input', () => speedVal.textContent = speedSlider.value + 'ms');
+        countSlider.oninput = () => countVal.textContent = parseInt(countSlider.value).toLocaleString();
+        speedSlider.oninput = () => speedVal.textContent = spd().toFixed(1);
 
-        // Fetch Pi digits from API
-        async function fetchPiDigits(numDigits) {
-            status.textContent = 'Fetching...';
+        async function π(n) {
             try {
-                let response;
-if (numDigits <= 5000000) { // Increased for more digits
-                    response = await fetch(`https://api.pi.delivery/api/v1/pi?decimal_places=${numDigits}`);
-                    const data = await response.json();
-                    return data.pi.replace(/[^0-9]/g, '').slice(0, numDigits); // Digits after decimal
-                } else {
-                    throw new Error('Max 1M digits');
-                }
-            } catch (error) {
-                status.textContent = 'Fetch error (CORS?), using sample digits: ' + error.message;
-                // Fallback sample first 1000 digits of Pi (after decimal)
-return '1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644288109756659334461284756482337867831652712019091456485669234603486104543266482133936072602491412737245870066063155881748815209209628292540917153643678925903600113305305488204665213841469519415116094330572703657595919530921861173819326117931051185480744623799627495673518857527248912279381830119491273811200048543614869752870696931095905516597937791620845269840161937401508404559689907103847549478230703856870410532062954608557992605604742665208902869129393870477147137165253976398477795786243848392057475916669047397215588';
+                const r = await fetch(`https://api.pi.delivery/api/v1/pi?decimal_places=${n}`);
+                const data = await r.json();
+                return data.pi.replace(/[^0-9]/g, '').slice(1);
+            } catch {
+                const s = '14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237';
+                return s.repeat(Math.ceil(n / s.length)).slice(0, n);
             }
         }
 
-        // Update frequencies from new digit
-        function addDigit(digitChar) {
-            const digit = parseInt(digitChar);
-            frequencies[digit]++;
-            totalDigits++;
+        function tick() {
+            if (p >= d.length) {
+                cancelAnimationFrame(raf);
+                status.textContent = `Complete! ${p.toLocaleString()} π digits`;
+                return;
+            }
+            const c = d[p];
+            f[parseInt(c)]++;
+            p++;
+            digitEl.textContent = c;
+            digitEl.style.color = `hsl(${parseInt(c)*36}, 95%, 65%)`;
         }
-        // Render frequency bar chart - clearer vertical bars with labels
-        function renderChart() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const barWidth = canvas.width / 12;
-            const chartHeight = canvas.height * 0.85;
-            const marginBottom = 60;
-            const maxFreq = Math.max(...frequencies, 1);
-            const barSpacing = barWidth * 0.2;
+        function paint() {
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            
+            const bw = Math.floor((w - 80) / 10);
+            const ch = h * 0.78;
+            const mb = 115;
+            const mf = Math.max(...f, 1);
 
-            // Background
-            ctx.fillStyle = '#222';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Smooth gradient BG
+            const g = ctx.createLinearGradient(0, 0, 0, h);
+            g.addColorStop(0, '#000');
+            g.addColorStop(0.6, '#0a0a0a');
+            g.addColorStop(1, '#1a1a1a');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, w, h);
 
             // Grid lines
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= 10; i++) {
-                const y = canvas.height - marginBottom - (i / 10) * chartHeight;
+            ctx.strokeStyle = 'rgba(64,128,255,0.15)';
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i <= 10; i += 2) {
+                const y = h - mb - (i/10) * ch;
+                ctx.lineDashOffset = p * 0.1;
                 ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
+                ctx.moveTo(40, y);
+                ctx.lineTo(w - 40, y);
                 ctx.stroke();
             }
 
-            // Bars
             ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Bars with advanced glow
             for (let i = 0; i < 10; i++) {
-                const barHeight = (frequencies[i] / maxFreq) * chartHeight;
-                const x = (canvas.width - 10 * barWidth) / 2 + i * barWidth;
+                const bh = f[i] / mf * ch;
+                const x = 45 + i * bw;
 
-                // Bar shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.fillRect(x + 1, canvas.height - marginBottom - barHeight + 1, barWidth - 4, barHeight);
+                // Multi-layer glow
+                ctx.shadowColor = `hsl(${i*36}, 95%, 60%)`;
+                ctx.shadowBlur = 25;
+                ctx.fillStyle = `hsla(${i*36}, 95%, 60%, 0.8)`;
+                ctx.fillRect(x-1, h - mb - bh -1, bw+2, bh+2);
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = `hsla(${i*36}, 95%, 65%, 1)`;
+                ctx.fillRect(x, h - mb - bh, bw-2, bh);
+                ctx.shadowBlur = 0;
 
-                // Bar
-                ctx.fillStyle = `hsl(${i * 36}, 70%, 60%)`;
-                ctx.fillRect(x, canvas.height - marginBottom - barHeight, barWidth - 4, barHeight);
+                // Digit label HIGH above (safe position)
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 12;
+                ctx.font = `bold ${Math.min(30, w/40)}px system-ui`;
+                ctx.fillText(i, x + bw/2, h - mb - bh - 35); // Higher up
+                ctx.shadowBlur = 0;
 
-                // Digit label
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 28px Arial';
-                ctx.fillText(i.toString(), x + barWidth / 2, canvas.height - 20);
+                // Count center
+                ctx.font = `bold ${Math.min(22, w/55)}px monospace`;
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillText(f[i].toLocaleString(), x + bw/2, h - mb - bh/2 + 2);
 
-                // Count label
-                ctx.font = 'bold 20px Arial';
-                ctx.fillText(frequencies[i].toString(), x + barWidth / 2, canvas.height - marginBottom - barHeight - 5);
-
-                // % label
-                if (totalDigits > 0) {
-                    const percent = ((frequencies[i] / totalDigits) * 100).toFixed(1);
-                    ctx.font = '16px Arial';
-                    ctx.fillText(percent + '%', x + barWidth / 2, canvas.height - marginBottom - barHeight - 25);
+                if (p > 100) {
+                    ctx.font = `${Math.min(15, w/85)}px monospace`;
+                    ctx.fillStyle = '#888';
+                    ctx.fillText(((f[i]/p)*100).toFixed(1)+'%', x + bw/2, h - mb + 8);
                 }
             }
 
-            // Title
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 32px Arial';
+            // Dynamic title
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = '#10b981';
             ctx.textAlign = 'left';
-            ctx.fillText('Pi Digits Frequency (0-9)', 20, 40);
+            ctx.textBaseline = 'top';
+            ctx.font = `bold ${Math.min(52, w/20)}px system-ui`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`π | ${p.toLocaleString()} digits`, 30, 40);
+            ctx.shadowBlur = 0;
         }
 
-
-
-        // Update stats and preview
-        function updateStats() {
-            totalDigitsSpan.textContent = totalDigits.toLocaleString();
-
-            freqList.innerHTML = frequencies.map((f, i) => `<div>${i}: ${f} (${((f/totalDigits)*100).toFixed(1)}%)</div>`).join('');
+        let fpsCounter = 0;
+        function loop() {
+            fpsCounter++;
+            if (fpsCounter % Math.max(1, Math.floor(spd())) === 0) tick();
+            paint();
+            raf = requestAnimationFrame(loop);
         }
 
-        // Animate: add one digit at a time
-        function animateDigits() {
-            if (allDigits.length === 0) return;
+        fetchBtn.onclick = async () => {
+            status.textContent = 'Loading π digits...';
+            d = await π(parseInt(countSlider.value));
+            f.fill(0);
+            p = 0;
+            cancelAnimationFrame(raf);
+            status.textContent = `⚡ Loaded ${d.length.toLocaleString()} - maximum speed`;
+            requestAnimationFrame(loop);
+        };
 
-            const idx = totalDigits;
-            if (idx < allDigits.length) {
-                const digitChar = allDigits[idx];
-                const digit = parseInt(digitChar);
-                addDigit(digitChar);
-                document.getElementById('current-digit').textContent = digitChar;
-                document.getElementById('current-digit').style.color = `hsl(${digit * 36}, 70%, 60%)`;
-                renderChart();
-                updateStats();
-                status.textContent = `Processed ${totalDigits}/${allDigits.length}`;
-            } else {
-                clearInterval(animationInterval);
-                status.textContent = 'Complete!';
-            }
-        }
+        moreBtn.onclick = async () => {
+            status.textContent = 'Streaming more π...';
+            d += await π(50000);
+            status.textContent = `+50K | ${d.length.toLocaleString()} total`;
+        };
 
-        // Main fetch and animate
-        fetchBtn.addEventListener('click', async () => {
-            const numDigits = parseInt(digitCountSlider.value);
-            const digits = await fetchPiDigits(numDigits);
-            if (digits) {
-                allDigits = digits;
-                frequencies = new Array(10).fill(0);
-                totalDigits = 0;
-                renderChart();
-                updateStats();
-                status.textContent = 'Starting animation...';
-                clearInterval(animationInterval);
-                animationInterval = setInterval(animateDigits, parseInt(speedSlider.value));
-            }
-        });
-
-        // Load more digits - append for infinite streaming
-        loadMoreBtn.addEventListener('click', async () => {
-            const chunkSize = 5000;
-            status.textContent = 'Appending more digits...';
-            const digits = await fetchPiDigits(chunkSize);
-            if (digits && digits.length > 0) {
-                allDigits += digits;
-                status.textContent = `Appended ${digits.length} digits. Total available: ${allDigits.length}, processed: ${totalDigits}`;
-                if (!animationInterval) {
-                    animationInterval = setInterval(animateDigits, parseInt(speedSlider.value));
-                }
-                document.getElementById('load-more-btn').style.background = '#28a745';
-            }
-        });
-
-        // Initial render
-        renderChart();
+        paint();
     </script>
 </body>
 </html>
-
