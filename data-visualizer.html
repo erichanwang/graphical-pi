@@ -14,12 +14,13 @@
         }
         #controls {
             position: absolute;
-            top: 10px;
+            bottom: 10px;
             left: 10px;
             z-index: 10;
-            background: rgba(0,0,0,0.7);
-            padding: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
             border-radius: 10px;
+            max-width: 300px;
         }
         label { display: block; margin: 10px 0 5px; }
         input[type="range"] { width: 200px; }
@@ -27,28 +28,31 @@
         button:hover { background: #0056b3; }
         #stats {
             position: absolute;
-            top: 10px;
+            bottom: 10px;
             right: 10px;
             z-index: 10;
-            background: rgba(0,0,0,0.7);
-            padding: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
             border-radius: 10px;
-            min-width: 200px;
+            min-width: 250px;
+            max-height: 200px;
+            overflow-y: auto;
         }
-        #digits-preview {
+#current-digit {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            width: 80%;
-            max-height: 80px;
-            overflow: auto;
-            background: rgba(255,255,255,0.1);
-            padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: nowrap;
-            border-radius: 5px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-size: 120px;
+            font-weight: bold;
+            color: hsl(0, 70%, 60%);
+            text-shadow: 0 0 30px currentColor;
+            opacity: 0.9;
+            pointer-events: none;
+            transition: all 0.2s ease;
         }
+
 
         canvas {
             display: block;
@@ -57,13 +61,15 @@
 </head>
 <body>
     <div id="controls">
-        <label>Digits to fetch: <span id="digit-count-val">1000</span></label>
-        <input type="range" id="digit-count" min="100" max="10000" step="100" value="1000">
+        <label>Digits to fetch: <span id="digit-count-val">10000</span></label>
+        <input type="range" id="digit-count" min="100" max="1000000" step="1000" value="10000">
         <br>
-        <label>Animation speed (slower = more digits): <span id="speed-val">50</span>ms</label>
-        <input type="range" id="speed" min="10" max="500" step="10" value="50">
+        <label>Animation speed: <span id="speed-val">20</span>ms</label>
+        <input type="range" id="speed" min="1" max="200" step="1" value="20">
         <br>
-        <button id="fetch-btn">Fetch Pi Digits & Animate</button>
+<button id="fetch-btn">Fetch Pi Digits & Animate</button>
+        <br>
+        <button id="load-more-btn" style="background: #28a745; margin-top: 5px; padding: 10px;">Load More (+5000 digits)</button>
         <div id="status">Ready</div>
     </div>
     <div id="stats">
@@ -71,7 +77,7 @@
         <div id="freq-list"></div>
     </div>
     <canvas id="chart-canvas"></canvas>
-    <div id="digits-preview"></div>
+    <div id="current-digit">?</div>
 
     <script>
         const canvas = document.getElementById('chart-canvas');
@@ -85,6 +91,7 @@
         const digitsPreview = document.getElementById('digits-preview');
         const digitCountVal = document.getElementById('digit-count-val');
         const speedVal = document.getElementById('speed-val');
+        const loadMoreBtn = document.getElementById('load-more-btn');
 
         // Resize canvas
         function resizeCanvas() {
@@ -108,7 +115,7 @@
             status.textContent = 'Fetching...';
             try {
                 let response;
-                if (numDigits <= 1000000) {
+if (numDigits <= 5000000) { // Increased for more digits
                     response = await fetch(`https://api.pi.delivery/api/v1/pi?decimal_places=${numDigits}`);
                     const data = await response.json();
                     return data.pi.replace(/[^0-9]/g, '').slice(0, numDigits); // Digits after decimal
@@ -118,7 +125,7 @@
             } catch (error) {
                 status.textContent = 'Fetch error (CORS?), using sample digits: ' + error.message;
                 // Fallback sample first 1000 digits of Pi (after decimal)
-                return '14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912';
+return '1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644288109756659334461284756482337867831652712019091456485669234603486104543266482133936072602491412737245870066063155881748815209209628292540917153643678925903600113305305488204665213841469519415116094330572703657595919530921861173819326117931051185480744623799627495673518857527248912279381830119491273811200048543614869752870696931095905516597937791620845269840161937401508404559689907103847549478230703856870410532062954608557992605604742665208902869129393870477147137165253976398477795786243848392057475916669047397215588';
             }
         }
 
@@ -198,9 +205,6 @@
             totalDigitsSpan.textContent = totalDigits.toLocaleString();
 
             freqList.innerHTML = frequencies.map((f, i) => `<div>${i}: ${f} (${((f/totalDigits)*100).toFixed(1)}%)</div>`).join('');
-
-            // Show last 500 digits scrolling
-            digitsPreview.textContent = allDigits.slice(-500);
         }
 
         // Animate: add one digit at a time
@@ -209,8 +213,11 @@
 
             const idx = totalDigits;
             if (idx < allDigits.length) {
-                const digit = allDigits[idx];
-                addDigit(digit);
+                const digitChar = allDigits[idx];
+                const digit = parseInt(digitChar);
+                addDigit(digitChar);
+                document.getElementById('current-digit').textContent = digitChar;
+                document.getElementById('current-digit').style.color = `hsl(${digit * 36}, 70%, 60%)`;
                 renderChart();
                 updateStats();
                 status.textContent = `Processed ${totalDigits}/${allDigits.length}`;
@@ -233,6 +240,21 @@
                 status.textContent = 'Starting animation...';
                 clearInterval(animationInterval);
                 animationInterval = setInterval(animateDigits, parseInt(speedSlider.value));
+            }
+        });
+
+        // Load more digits - append for infinite streaming
+        loadMoreBtn.addEventListener('click', async () => {
+            const chunkSize = 5000;
+            status.textContent = 'Appending more digits...';
+            const digits = await fetchPiDigits(chunkSize);
+            if (digits && digits.length > 0) {
+                allDigits += digits;
+                status.textContent = `Appended ${digits.length} digits. Total available: ${allDigits.length}, processed: ${totalDigits}`;
+                if (!animationInterval) {
+                    animationInterval = setInterval(animateDigits, parseInt(speedSlider.value));
+                }
+                document.getElementById('load-more-btn').style.background = '#28a745';
             }
         });
 
