@@ -2,20 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="A live, high-resolution generative art piece: two rotating arms, one spinning pi times faster than the other, tracing an ever-evolving pattern that visualizes the transcendental number pi.">
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='black'/%3E%3Ctext x='50' y='68' font-size='64' text-anchor='middle' fill='%236ea8ff' font-family='monospace'%3E%CF%80%3C/text%3E%3C/svg%3E">
     <title>Graphical Pi</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="controls" style="position: absolute; top: 10px; left: 10px; z-index: 2; color: white;">
-        <label for="speed">Speed:</label>
-        <input type="range" id="speed" min="0" max="1" step="0.001" value="0.01">
-        <button id="zoom-in">+</button>
-        <button id="zoom-out">-</button>
-        <button id="toggle-zoom">Toggle Follow</button>
+    <div id="controls">
+        <div class="field">
+            <label for="speed">Speed</label>
+            <input type="range" id="speed" min="0" max="1" step="0.001" value="0.01">
+            <span id="speed-value">0.0001</span>
+        </div>
+        <button id="zoom-in" aria-label="Zoom in">+</button>
+        <button id="zoom-out" aria-label="Zoom out">&minus;</button>
+        <button id="toggle-zoom" aria-pressed="false">Toggle Follow</button>
+        <button id="reset-trail">Reset</button>
     </div>
-    <canvas id="trailCanvas" style="position: absolute; top: 0; left: 0; z-index: 0;"></canvas>
-    <canvas id="piCanvas" style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
+    <a class="nav-link" href="data-visualizer.html">Digit Visualizer &rarr;</a>
+    <canvas id="trailCanvas"></canvas>
+    <canvas id="piCanvas"></canvas>
+    <p id="hint">Scroll/pinch to zoom &middot; drag not required &middot; resize-safe</p>
     <script src="script.js"></script>
 </body>
 </html>
